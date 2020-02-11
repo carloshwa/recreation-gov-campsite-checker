@@ -117,6 +117,10 @@ def valid_date(s):
 
 @app.route('/check/<park_id>')
 def check(park_id):
+    key = request.args.get('key')
+    if key != os.environ["KEY"]:
+        return "No data."
+
     start_date = datetime.strptime(request.args.get('start_date'), "%Y-%m-%d")
     end_date = datetime.strptime(request.args.get('end_date'), "%Y-%m-%d")
 
