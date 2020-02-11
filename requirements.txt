@@ -16,3 +16,4 @@ soupsieve==1.8
 toml==0.10.0
 urllib3==1.24.2
 Flask==1.1.1
+mailjet_rest==v1.3.3

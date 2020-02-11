@@ -1,5 +1,4 @@
 /myvenv/
 __pycache__
-/next*
-/tweetlog
-/twitter_credentials.py
+/.idea
+.gcloudignore
