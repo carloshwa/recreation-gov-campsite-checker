@@ -152,13 +152,13 @@ def check(park_id):
                 start_date.strftime(INPUT_DATE_FORMAT),
                 end_date.strftime(INPUT_DATE_FORMAT),
             )
+
+        mailjet_data['Messages'][0]["TextPart"] = result
+        mailjet_result = mailjet.send.create(data=mailjet_data)
+        print(mailjet_result.status_code)
+        print(mailjet_result.json())
     else:
         result += "There are no campsites available :("
-
-    mailjet_data['Messages'][0]["TextPart"] = result
-    mailjet_result = mailjet.send.create(data=mailjet_data)
-    print(mailjet_result.status_code)
-    print(mailjet_result.json())
 
     return result
 
