@@ -8,6 +8,30 @@ from datetime import datetime, timedelta
 import requests
 from fake_useragent import UserAgent
 from flask import Flask, request
+from mailjet_rest import Client
+import os
+
+mailjet_api_key = os.environ['MAILJET_API_KEY']
+mailjet_api_secret = os.environ['MAILJET_API_SECRET']
+mailjet_from = os.environ['MAILJET_FROM']
+mailjet_to = os.environ['MAILJET_TO']
+mailjet = Client(auth=(mailjet_api_key, mailjet_api_secret), version='v3.1')
+
+mailjet_data = {
+    'Messages': [
+        {
+            "From": {
+                "Email": mailjet_from
+            },
+            "To": [
+                {
+                    "Email": mailjet_to,
+                }
+            ],
+            "Subject": "Campsite checker",
+        }
+    ]
+}
 
 app = Flask(__name__)
 
@@ -126,6 +150,11 @@ def check(park_id):
             )
     else:
         result += "There are no campsites available :("
+
+    mailjet_data['Messages'][0]["TextPart"] = result
+    mailjet_result = mailjet.send.create(data=mailjet_data)
+    print(mailjet_result.status_code)
+    print(mailjet_result.json())
 
     return result
 
