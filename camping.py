@@ -3,19 +3,19 @@
 import argparse
 import json
 import logging
-import sys
 from datetime import datetime, timedelta
 
 import requests
 from fake_useragent import UserAgent
+from flask import Flask, request
 
+app = Flask(__name__)
 
 LOG = logging.getLogger(__name__)
 formatter = logging.Formatter("%(asctime)s - %(process)s - %(levelname)s - %(message)s")
 sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 LOG.addHandler(sh)
-
 
 BASE_URL = "https://www.recreation.gov"
 AVAILABILITY_ENDPOINT = "/api/camps/availability/campground/"
@@ -91,77 +91,47 @@ def valid_date(s):
         raise argparse.ArgumentTypeError(msg)
 
 
-def _main(parks):
-    out = []
-    availabilities = False
-    for park_id in parks:
-        params = generate_params(args.start_date, args.end_date)
-        LOG.debug("Querying for {} with these params: {}".format(park_id, params))
-        park_information = get_park_information(park_id, params)
-        LOG.debug(
-            "Information for {}: {}".format(
-                park_id, json.dumps(park_information, indent=1)
-            )
-        )
-        name_of_site = get_name_of_site(park_id)
-        current, maximum = get_num_available_sites(
-            park_information, args.start_date, args.end_date
-        )
-        if current:
-            emoji = SUCCESS_EMOJI
-            availabilities = True
-        else:
-            emoji = FAILURE_EMOJI
+@app.route('/check/<park_id>')
+def check(park_id):
+    start_date = datetime.strptime(request.args.get('start_date'), "%Y-%m-%d")
+    end_date = datetime.strptime(request.args.get('end_date'), "%Y-%m-%d")
 
-        out.append(
-            "{} {} ({}): {} site(s) available out of {} site(s)".format(
-                emoji, name_of_site, park_id, current, maximum
-            )
+    availabilities = False
+    params = generate_params(start_date, end_date)
+    LOG.debug("Querying for {} with these params: {}".format(park_id, params))
+    park_information = get_park_information(park_id, params)
+    LOG.debug(
+        "Information for {}: {}".format(
+            park_id, json.dumps(park_information, indent=1)
+        )
+    )
+    name_of_site = get_name_of_site(park_id)
+    current, maximum = get_num_available_sites(
+        park_information, start_date, end_date
+    )
+    if current:
+        emoji = SUCCESS_EMOJI
+        availabilities = True
+    else:
+        emoji = FAILURE_EMOJI
+
+    result = "{} {} ({}): {} site(s) available out of {} site(s)\n".format(
+            emoji, name_of_site, park_id, current, maximum
         )
 
     if availabilities:
-        print(
-            "There are campsites available from {} to {}!!!".format(
-                args.start_date.strftime(INPUT_DATE_FORMAT),
-                args.end_date.strftime(INPUT_DATE_FORMAT),
+        result += "There are campsites available from {} to {}!!!".format(
+                start_date.strftime(INPUT_DATE_FORMAT),
+                end_date.strftime(INPUT_DATE_FORMAT),
             )
-        )
     else:
-        print("There are no campsites available :(")
-    print("\n".join(out))
+        result += "There are no campsites available :("
+
+    return result
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--debug", "-d", action="store_true", help="Debug log level")
-    parser.add_argument(
-        "--start-date", required=True, help="Start date [YYYY-MM-DD]", type=valid_date
-    )
-    parser.add_argument(
-        "--end-date",
-        required=True,
-        help="End date [YYYY-MM-DD]. You expect to leave this day, not stay the night.",
-        type=valid_date,
-    )
-    parser.add_argument(
-        dest="parks", metavar="park", nargs="+", help="Park ID(s)", type=int
-    )
-    parser.add_argument(
-        "--stdin",
-        "-",
-        action="store_true",
-        help="Read list of park ID(s) from stdin instead",
-    )
-
-    args = parser.parse_args()
-
-    if args.debug:
-        LOG.setLevel(logging.DEBUG)
-
-    parks = args.parks or [p.strip() for p in sys.stdin]
-
-    try:
-        _main(parks)
-    except Exception:
-        print("Something went wrong")
-        raise
+    # This is used when running locally only. When deploying to Google App
+    # Engine, a webserver process such as Gunicorn will serve the app. This
+    # can be configured by adding an `entrypoint` to app.yaml.
+    app.run(host='127.0.0.1', port=8080, debug=True)
