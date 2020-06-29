@@ -17,8 +17,7 @@ LOG.addHandler(sh)
 
 
 BASE_URL = "https://www.recreation.gov"
-AVAILABILITY_ENDPOINT = "/api/camps/availability/campground/"
-MAIN_PAGE_ENDPOINT = "/api/camps/campgrounds/"
+AVAILABILITY_ENDPOINT = "/api/ticket/availability/facility/"
 
 INPUT_DATE_FORMAT = "%Y-%m-%d"
 
@@ -29,12 +28,12 @@ headers = {"User-Agent": UserAgent().random}
 
 
 def format_date(date_object):
-    date_formatted = datetime.strftime(date_object, "%Y-%m-%dT00:00:00Z")
+    date_formatted = datetime.strftime(date_object, "%Y-%m-%d")
     return date_formatted
 
 
-def generate_params(start, end):
-    params = {"start_date": "2020-07-01T00:00:00.000Z"}
+def generate_params(start):
+    params = {"date": format_date(start)}
     return params
 
 
@@ -51,36 +50,23 @@ def send_request(url, params):
 
 
 def get_park_information(park_id, params):
-    url = "{}{}{}{}".format(BASE_URL, AVAILABILITY_ENDPOINT, park_id, "/month")
+    url = "{}{}{}".format(BASE_URL, AVAILABILITY_ENDPOINT, park_id)
     LOG.debug("Querying for {} with these params: {}".format(url, params))
     return send_request(url, params)
 
 
-def get_name_of_site(park_id):
-    url = "{}{}{}".format(BASE_URL, MAIN_PAGE_ENDPOINT, park_id)
-    resp = send_request(url, {})
-    return resp["campground"]["facility_name"]
-
-
-def get_num_available_sites(resp, start_date, end_date):
-    maximum = resp["count"]
+def get_num_available_sites(resp):
+    primary = resp[0]["booking_windows"]["PRIMARY"]["advanced_sales_details"]["threshold_exists"]
+    secondary = resp[0]["booking_windows"]["SECONDARY"]["advanced_sales_details"]["threshold_exists"]
+    LOG.debug("primary: {}, secondary: {}".format(primary, secondary))
 
     num_available = 0
-    num_days = (end_date - start_date).days
-    dates = [end_date - timedelta(days=i) for i in range(1, num_days + 1)]
-    dates = set(format_date(i) for i in dates)
-    for site in resp["campsites"].values():
-        available = bool(len(site["availabilities"]))
-        for date, status in site["availabilities"].items():
-            if date not in dates:
-                continue
-            if status != "Available":
-                available = False
-                break
-        if available:
-            num_available += 1
-            LOG.debug("Available site {}: {}".format(num_available, json.dumps(site, indent=1)))
-    return num_available, maximum
+    if primary:
+        num_available += 1
+    if secondary:
+        num_available += 1
+
+    return num_available
 
 
 def valid_date(s):
@@ -95,7 +81,7 @@ def _main(parks):
     out = []
     availabilities = False
     for park_id in parks:
-        params = generate_params(args.start_date, args.end_date)
+        params = generate_params(args.start_date)
         LOG.debug("Querying for {} with these params: {}".format(park_id, params))
         park_information = get_park_information(park_id, params)
         LOG.debug(
@@ -103,9 +89,8 @@ def _main(parks):
                 park_id, json.dumps(park_information, indent=1)
             )
         )
-        name_of_site = get_name_of_site(park_id)
-        current, maximum = get_num_available_sites(
-            park_information, args.start_date, args.end_date
+        current = get_num_available_sites(
+            park_information
         )
         if current:
             emoji = SUCCESS_EMOJI
@@ -114,20 +99,19 @@ def _main(parks):
             emoji = FAILURE_EMOJI
 
         out.append(
-            "{} {} ({}): {} site(s) available out of {} site(s)".format(
-                emoji, name_of_site, park_id, current, maximum
+            "{} {}: {} pass(es) available".format(
+                emoji, park_id, current
             )
         )
 
     if availabilities:
         print(
-            "There are campsites available from {} to {}!!!".format(
-                args.start_date.strftime(INPUT_DATE_FORMAT),
-                args.end_date.strftime(INPUT_DATE_FORMAT),
+            "There are passes available for {}!!!".format(
+                args.start_date.strftime(INPUT_DATE_FORMAT)
             )
         )
     else:
-        print("There are no campsites available :(")
+        print("There are no passes available :(")
     print("\n".join(out))
 
 
@@ -137,12 +121,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start-date", required=True, help="Start date [YYYY-MM-DD]", type=valid_date
     )
-    parser.add_argument(
-        "--end-date",
-        required=True,
-        help="End date [YYYY-MM-DD]. You expect to leave this day, not stay the night.",
-        type=valid_date,
-    )
+
     parser.add_argument(
         dest="parks", metavar="park", nargs="+", help="Park ID(s)", type=int
     )
