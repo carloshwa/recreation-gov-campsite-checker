@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import requests
 from fake_useragent import UserAgent
 
+
 LOG = logging.getLogger(__name__)
 formatter = logging.Formatter("%(asctime)s - %(process)s - %(levelname)s - %(message)s")
 sh = logging.StreamHandler()
@@ -34,7 +35,7 @@ def format_date(date_object):
 
 
 def generate_params(start, end):
-    params = {"start_date": "2020-07-01T00:00:00.000Z"}
+    params = {"start_date": format_date(start), "end_date": format_date(end)}
     return params
 
 
@@ -51,8 +52,7 @@ def send_request(url, params):
 
 
 def get_park_information(park_id, params):
-    url = "{}{}{}{}".format(BASE_URL, AVAILABILITY_ENDPOINT, park_id, "/month")
-    LOG.debug("Querying for {} with these params: {}".format(url, params))
+    url = "{}{}{}".format(BASE_URL, AVAILABILITY_ENDPOINT, park_id)
     return send_request(url, params)
 
 
