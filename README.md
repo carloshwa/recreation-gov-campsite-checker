@@ -4,9 +4,11 @@
 
 This script scrapes the https://recreation.gov website for campsite availabilities.
 
+**Note:** Please don't abuse this script. Most folks out there don't know how to run scrapers against websites, so you're at an unfair advantage by using this.
+
 ## Example Usage
 ```
-$ python camping.py --start-date 2018-07-20 --end-date 2018-07-23 232448 232450 232447 232770
+$ python camping.py --start-date 2018-07-20 --end-date 2018-07-23 --parks 232448 232450 232447 232770
 ❌ TUOLUMNE MEADOWS: 0 site(s) available out of 148 site(s)
 🏕 LOWER PINES: 11 site(s) available out of 73 site(s)
 ❌ UPPER PINES: 0 site(s) available out of 235 site(s)
@@ -26,6 +28,14 @@ $ python camping.py --start-date 2018-07-20 --end-date 2018-07-23 --stdin < park
 ```
 
 You'll want to put this script into a 5 minute crontab. You could also grep the output for the success emoji (🏕) and then do something in response, like notify you that there is a campsite available. See the "Twitter Notification" section below.
+
+## Number of nights
+If you're flexible on travel dates, you can search for a specific number of contiguous nights within a wide range of dates. This is useful for campgrounds in high-demand areas (like Yosemite Valley) or during peak season when openings are rare. Simply specify the `--nights` argument. For example, to search for a 5-day reservation in the month of June 2020 at Chisos Basin:
+```
+$ python camping.py --start-date 2020-06-01 --end-date 2020-06-30 --nights 5 234038
+There are campsites available from 2020-06-01 to 2020-06-30!!!
+🏕 CHISOS BASIN (BIG BEND) (234038): 13 site(s) available out of 62 site(s)
+```
 
 ## Getting park IDs
 What you'll want to do is go to https://recreation.gov and search for the campground you want. Click on it in the search sidebar. This should take you to a page for that campground, the URL will look like `https://www.recreation.gov/camping/campgrounds/<number>`. That number is the park ID.
