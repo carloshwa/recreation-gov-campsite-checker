@@ -5,7 +5,7 @@ import time
 
 from hashlib import md5
 
-from camping import SUCCESS_EMOJI
+from enums.emoji import Emoji
 
 # Janky simple argument parsing.
 if len(sys.argv) != 2:
@@ -17,7 +17,7 @@ sayMessage = sys.argv[1]
 available_site_strings = []
 for line in sys.stdin:
     line = line.strip()
-    if SUCCESS_EMOJI in line:
+    if Emoji.SUCCESS.value in line:
         os.system("say {}".format(sayMessage))
         name = " ".join(line.split(":")[0].split(" ")[1:])
         available = line.split(":")[1][1].split(" ")[0]
