@@ -72,9 +72,18 @@ There are campsites available from 2020-06-01 to 2020-06-30!!!
 
 You can also take [this site for a spin](https://pastudan.github.io/national-parks/). Thanks to [pastudan](https://github.com/pastudan)!
 
+## Excluding specific campsites
+
+You can exclude specific campsites, for example group sites, by defining a file (e.g. `excluded.txt`) with one campsite ID per line and using the `--exclusion-file` argument like this:
+
+```
+$ python camping.py --start-date 2018-07-20 --end-date 2018-07-23 --parks 232448 232450 232447 232770 --exclusion-file excluded.txt
+```
+
 ## Installation
 
 I wrote this in Python 3.7 but I've tested it as working with 3.5 and 3.6 also.
+It is best to use 3.9+
 ```
 python3 -m venv myvenv
 source myvenv/bin/activate
@@ -109,7 +118,7 @@ python -m unittest
 
 ## Twitter Notification
 If you want to be notified about campsite availabilities via Twitter (they're the only API out there that is actually easy to use), you can do this:
-1. Make an app via Twitter. It's pretty easy, go to: https://apps.twitter.com/app/new.
+1. Make an app via Twitter. It's pretty easy, go to: https://developer.twitter.com/en/apps.
 2. Change the values in `twitter_credentials.json` to match your key values.
 3. Pipe the output of your command into `notifier.py`. See below for an example.
 

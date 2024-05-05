@@ -26,7 +26,7 @@ LOG.addHandler(sh)
 
 
 def get_park_information(
-    park_id, start_date, end_date, campsite_type=None, campsite_ids=()
+    park_id, start_date, end_date, campsite_type=None, campsite_ids=(), excluded_site_ids=[]
 ):
     """
     This function consumes the user intent, collects the necessary information
@@ -67,6 +67,8 @@ def get_park_information(
 
     for month_data in api_data:
         for campsite_id, campsite_data in month_data["campsites"].items():
+            if campsite_id in excluded_site_ids:
+                continue
             available = []
             a = data.setdefault(campsite_id, [])
             for date, availability_value in campsite_data[
@@ -93,15 +95,22 @@ def get_park_information(
 
     return data
 
+def is_weekend(date):
+    weekday = date.weekday()
+
+    return weekday == 4 or weekday == 5
+
 
 def get_num_available_sites(
-    park_information, start_date, end_date, nights=None
+    park_information, start_date, end_date, nights=None, weekends_only=False,
 ):
     maximum = len(park_information)
 
     num_available = 0
     num_days = (end_date - start_date).days
     dates = [end_date - timedelta(days=i) for i in range(1, num_days + 1)]
+    if weekends_only:
+        dates = filter(is_weekend, dates)
     dates = set(
         formatter.format_date(
             i, format_string=DateFormat.ISO_DATE_FORMAT_RESPONSE.value
@@ -183,10 +192,10 @@ def consecutive_nights(available, nights):
 
 
 def check_park(
-    park_id, start_date, end_date, campsite_type, campsite_ids=(), nights=None
+    park_id, start_date, end_date, campsite_type, campsite_ids=(), nights=None, weekends_only=False, excluded_site_ids=[],
 ):
     park_information = get_park_information(
-        park_id, start_date, end_date, campsite_type, campsite_ids
+        park_id, start_date, end_date, campsite_type, campsite_ids, excluded_site_ids=excluded_site_ids,
     )
     LOG.debug(
         "Information for park {}: {}".format(
@@ -195,7 +204,7 @@ def check_park(
     )
     park_name = RecreationClient.get_park_name(park_id)
     current, maximum, availabilities_filtered = get_num_available_sites(
-        park_information, start_date, end_date, nights=nights
+        park_information, start_date, end_date, nights=nights, weekends_only=weekends_only,
     )
     return current, maximum, availabilities_filtered, park_name
 
@@ -263,7 +272,29 @@ def generate_json_output(info_by_park_id):
     return json.dumps(availabilities_by_park_id), has_availabilities
 
 
+def remove_comments(lines: list[str]) -> list[str]:
+    new_lines = []
+    for line in lines:
+        if line.startswith("#"):  # Deal with comment as the first character
+            continue
+
+        line = line.split(" #")[0]
+        stripped = line.strip()
+        if stripped != "":
+            new_lines.append(stripped)
+
+    return new_lines
+
+
 def main(parks, json_output=False):
+    excluded_site_ids = []
+
+    if args.exclusion_file:
+        with open(args.exclusion_file, "r") as f:
+            excluded_site_ids = f.readlines()
+            excluded_site_ids = [l.strip() for l in excluded_site_ids]
+            excluded_site_ids = remove_comments(excluded_site_ids)
+
     info_by_park_id = {}
     for park_id in parks:
         info_by_park_id[park_id] = check_park(
@@ -273,6 +304,8 @@ def main(parks, json_output=False):
             args.campsite_type,
             args.campsite_ids,
             nights=args.nights,
+            weekends_only=args.weekends_only,
+            excluded_site_ids=excluded_site_ids,
         )
 
     if json_output:
